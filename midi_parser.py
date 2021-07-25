@@ -25,6 +25,21 @@ py_ver = sys.version_info[0]
 # * Frequency and Pitch of Sound: From Physclips 
 # ** https://www.animations.physics.unsw.edu.au/jw/frequency-pitch-sound.htm
 
+msg_level_D = {
+    'shell'  : '1;34;40',
+    'success': '1;32;40',
+    'info'   : '1;36;40',
+    'warn'   : '1;35;40',
+    'error'  : '1;31;40',
+}
+
+def color_print(s, level=''):
+    cb = '\x1b[{}m'
+    ce = '\x1b[0m'
+
+    cb = cb.format(msg_level_D[level])
+    print(f'{cb}{s}{ce}')
+
 
 bytes_L = []
 
@@ -61,6 +76,13 @@ def hex2bin(hex_str):
     bit_num = len(hex_str)*4 
     return "{val:0{width}b}".format(val=hex2dec(hex_str),width=bit_num)
 
+def ptr2rc(ptr):
+    row_num = 16
+    row = ptr // row_num
+    col = ptr % row_num
+    return row, hexchr[col]
+
+
 def read_delta_time(ptr, info_level=0):
     """ return (int, int) : (pointer offset, num of tick) """
     # * Variable Length Values 
@@ -85,7 +107,7 @@ def read_delta_time(ptr, info_level=0):
     return ptr, dt
 
 
-def read_event(ptr,abs_t,info_level=1):
+def read_event(ptr, abs_t, info_level=1):
     """ return ptr, (event vars) """
     global uspqn_L, trk_cnt # , NUME, DENO
     byte = get_bytes(ptr)
@@ -106,12 +128,8 @@ def read_event(ptr,abs_t,info_level=1):
                     prefix = "Track name:"
                 else:
                     prefix = "Instrument name:"
-                if py_ver<3:
-                    print(prefix, txt_name.decode("hex"))
-                else:
-                    print(prefix, bytes.fromhex(txt_name).decode("windows-1252"))
-                # else:
-                #     print("Instrument name: {}".format(bytearray.fromhex(txt_name).decode()))
+                # print(prefix, bytes.fromhex(txt_name).decode("windows-1252"))
+                print(prefix, bytes.fromhex(txt_name).decode())
             ptr+=txt_len
             return ptr, txt_name
 
@@ -179,7 +197,7 @@ def read_event(ptr,abs_t,info_level=1):
             return ptr, (sf,mi)
 
         else:
-            print(f"x Unknown Meta-Event bytes: 0x{byte}")
+            color_print(f"x Unknown Meta-Event bytes: 0x{byte}", level="error")
             return ptr, False
 
     elif byte=="4d":
@@ -187,7 +205,7 @@ def read_event(ptr,abs_t,info_level=1):
             ptr+=2
             if get_bytes(ptr,ptr+2)=="726b":
                 if info_level>=2:
-                    print("\n=== MTrk ===")
+                    color_print("\n=== MTrk ===", level="info")
                 ptr+=2
                 mtrk_chk_len = hex2dec(get_bytes(ptr,ptr+4))
                 if info_level>=2:
@@ -195,7 +213,7 @@ def read_event(ptr,abs_t,info_level=1):
                 ptr+=4
                 return ptr, mtrk_chk_len
             else:
-                print(f"x Unknown bytes {get_bytes(ptr)} after 4d54 at ptr {ptr}!")
+                color_print(f"x Unknown bytes {get_bytes(ptr)} after 4d54 at ptr {ptr}!", level="error")
                 return ptr, False
 
     elif byte[0] in "89":
@@ -253,7 +271,7 @@ def read_event(ptr,abs_t,info_level=1):
             ptr+=3
             return ptr, (chan_num, mode_num)
         else:
-            print(f"x Invalid chan num {byte[1]} of control!")
+            color_print(f"x Invalid chan num {byte[1]} of control!", level="error")
             return ptr, False
 
     elif byte[0]=="c":
@@ -266,10 +284,11 @@ def read_event(ptr,abs_t,info_level=1):
             chan_inst_L.append([chan_num,inst_num])
             return ptr,(chan_num,inst_num)
         else:
-            print("x Invalid chan num to change instrument!")
+            color_print("x Invalid chan num to change instrument!", level="error")
             return ptr, False
     else:
-        print(f"x Unknown bytes {byte} at ptr {str}!")
+        row, col = ptr2rc(ptr)
+        color_print(f"x Unknown bytes {byte.upper()} at ptr {ptr}: row {row:0>2} col {col:0>2}!", level="error")
         return ptr, False
 
 active_note_L = []
@@ -334,7 +353,7 @@ def read_mthd(info_level=2):
     ptr = 0
     if get_bytes(ptr,ptr+4) == "4d546864":
         if info_level>=2:
-            print("=== MThd ===")
+            color_print("\n=== MThd ===", level="info")
     else:
         print("x Cannot parse MThd!")
         return ptr, False
@@ -415,7 +434,6 @@ def process_midi(filename, info_level=1):
     return cvt_sec_note_L
 
 # Table of MIDI Note Numbers
-
 # ---|-------------------------------------------------
 # Oct|                  Note Numbers
 # ---|-------------------------------------------------
@@ -441,7 +459,8 @@ def process_midi(filename, info_level=1):
 if __name__ == '__main__':
     os.system("clear")
     filename = "passionate-duelist.mid"
-    played_note_L = process_midi("E:/musix/mids/"+filename, info_level=3)
+    # filename = "secret-fast.mid"
+    played_note_L = process_midi("E:/musix/mids/"+filename, info_level=2)
     
     # for note in played_note_L:
     #     print(note)
