@@ -16,6 +16,7 @@ trk = tracks[1]
 
 cnt = 0
 for trk in tracks:
+    print(len(trk))
     for msg in trk:
         if msg.type == 'program_change':
             prog = msg.program
