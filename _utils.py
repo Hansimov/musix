@@ -22,6 +22,52 @@ def disp_dict(data):
         color_print(f'{k:{max_len+1}}: {v}', level='info')
 
 
+# Standard MIDI file format, updated 
+#   http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
+
+# MIDI文件格式解析 | 码农家园 
+#   https://www.codenong.com/js59d74800b43b/
+
+# 读书笔记——MIDI文件结构简介 - 哔哩哔哩 
+#   https://www.bilibili.com/read/cv1753143/
+
+# MIDI文件格式分析──理论篇 - Midifan：我们关注电脑音乐 
+#   https://m.midifan.com/article_body.php?id=901
+
+# Note names, MIDI numbers and frequencies 
+#   https://newt.phys.unsw.edu.au/jw/notes.html
+
+# Frequency and Pitch of Sound: From Physclips 
+#   https://www.animations.physics.unsw.edu.au/jw/frequency-pitch-sound.htm
+
+
+# Table of MIDI Note Numbers
+# ---|-------------------------------------------------
+# Oct|                  Note Numbers
+# ---|-------------------------------------------------
+#    |   C  C#   D  D#   E   F  F#   G  G#   A  A#   B 
+# ---|-------------------------------------------------
+# -1 |   0   1   2   3   4   5   6   7   8   9  10  11 
+#  0 |  12  13  14  15  16  17  18  19  20  21  22  23 
+#  1 |  24  25  26  27  28  29  30  31  32  33  34  35 
+#  2 |  36  37  38  39  40  41  42  43  44  45  46  47 
+#  3 |  48  49  50  51  52  53  54  55  56  57  58  59 
+#  4 |  60  61  62  63  64  65  66  67  68  69  70  71 
+#  5 |  72  73  74  75  76  77  78  79  80  81  82  83 
+#  6 |  84  85  86  87  88  89  90  91  92  93  94  95 
+#  7 |  96  97  98  99 100 101 102 103 104 105 106 107 
+#  8 | 108 109 110 111 112 113 114 115 116 117 118 119 
+#  9 | 120 121 122 123 124 125 126 127                
+# ---|-------------------------------------------------
+
+# Middle C = C4 (60, 0x3c)
+# C4 is 40th key on 88-key piano keyboards
+# 88-key range: A0-C8 | 21-108 | 0x15-0x80
+
+"""
+# =================================================== #
+"""
+
 # Standard MIDI file format, updated
 #   http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
 
@@ -249,4 +295,8 @@ percussion_num_table = { # on channel 9 (start from 0)
     85: 'Castanets',
     86: 'Mute Surdo',
     87: 'Open Surdo'
+}
+
+control_num_table = {
+    
 }

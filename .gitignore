@@ -1,4 +1,5 @@
 *.mp3
+*.log
 *.wav
 __pycache__/
 *.blend1

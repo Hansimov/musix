@@ -1,2 +1,2 @@
 # musix
-music 3d animaiton and visualization
+3d music visualization and animation

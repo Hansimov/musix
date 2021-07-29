@@ -8,30 +8,33 @@ fn = 'passionate-duelist.mid'
 
 md = mido.MidiFile(fn)
 
-# tracks = md.tracks
 tracks = md.tracks
 print(len(tracks))
-trk = tracks[1]
-# print(trk)
 
-cnt = 0
-for trk in tracks:
-    print(len(trk))
-    for msg in trk:
-        if msg.type == 'program_change':
-            prog = msg.program
-            chan = msg.channel
-            if chan == 9:
-                inst = percussion_num_table[prog]
-            else:
-                inst = patch_num_table[prog]
+def disp_track(trk):
+    with open('tracks.log', 'w') as wf:
+        for trk in tracks:
+            # trk = sorted(trk, key=lambda msg: msg.time)
+            # print(trk, file=wf)
+            print(len(trk), file=wf)
+            for msg in trk:
+                print(f'\t{msg.type} {msg}', file=wf)
 
-            print(f"channel: {chan:<3} program: {prog:<4} instrument: {inst}")
-            cnt += 1
-print(cnt)
+def disp_track_x():
+    cnt = 0
+    for trk in tracks:
+        # print(len(trk))
+        for msg in trk:
+            if msg.type == 'program_change':
+                prog = msg.program
+                chan = msg.channel
+                if chan == 9:
+                    inst = percussion_num_table[prog]
+                else:
+                    inst = patch_num_table[prog]
 
-# for func in dir(md):
-#     print(func)
+                # print(f'channel: {chan:<3} program: {prog:<4} instrument: {inst}')
+                cnt += 1
+        # print(cnt)
 
-# for i in range(10000):
-#     print(i)
+disp_track(tracks[1])
