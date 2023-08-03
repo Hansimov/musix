@@ -1,7 +1,9 @@
 # from manim import MovingCameraScene
+from collections import Counter
 from pathlib import Path
 import mido
-from collections import Counter
+import librosa
+import pandas as pd
 
 
 class OnlyMyRailGun:
@@ -12,16 +14,18 @@ class OnlyMyRailGun:
 
     def run(self):
         mf = mido.MidiFile(self.midi_filepath)
-        note_counts = Counter()
-        for i, track in enumerate(mf.tracks):
-            # print(f"Track {i}: {track.name}")
-            for msg in track:
-                if msg.type == "note_on":
-                    channel = msg.channel
-                    note_counts[channel] += 1
-                    # print(msg)
-        for channel, count in note_counts.most_common():
-            print(f"Channel {channel}: {count} notes")
+        notes = []
+        for msg in mf:
+            if msg.type == "note_on" or msg.type == "note_off":
+                note = msg.note
+                velocity = msg.velocity
+                time = msg.time
+                type = msg.type
+                notes.append([note, velocity, time, type])
+
+        df = pd.DataFrame(notes, columns=["note", "velocity", "time", "type"])
+        df = df.sort_values(by="time")
+        print(df)
 
 
 if __name__ == "__main__":
