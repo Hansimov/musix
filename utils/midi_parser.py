@@ -147,6 +147,24 @@ metadata:
 """
 
 
+class NoteRow:
+    def __init__(self):
+        pass
+
+    def create(self):
+        note_attrs = [
+            "note",
+            "port",
+            "track",
+            "channel",
+            "instrument",
+            "velocity",
+            "start_time",
+            "duration",
+            "key",
+        ]
+
+
 class MidiToNotesDataframe:
     def __init__(self, midi_filepath):
         self.midi_filepath = midi_filepath
@@ -168,6 +186,33 @@ class MidiToNotesDataframe:
     def current_track_meta(self):
         return self.track_meta[self.current_track_idx]
 
+    def set_current_track_meta(self, keys, message):
+        for key in key:
+            self.current_track_meta()[key] = message.get_attr(key)
+
+    def set_key_signature(self, message):
+        """
+        MetaMessage('key_signature',
+            key='C',
+            time=0,
+        )
+        https://mido.readthedocs.io/en/stable/meta_message_types.html#key-signature-0x59
+        """
+        key_signature_keys = ["key"]
+        self.set_current_track_meta(key_signature_keys, message)
+
+    def set_midi_port(self, message):
+        """
+        MetaMessage('midi_port',
+            port=0,
+            time=0,
+        )
+
+        https://mido.readthedocs.io/en/stable/meta_message_types.html#midi-port-0x21
+        """
+        midi_port_keys = ["port"]
+        self.set_current_track_meta(midi_port_keys, message)
+
     def set_time_signature(self, message):
         """
         MetaMessage('time_signature',
@@ -186,8 +231,7 @@ class MidiToNotesDataframe:
             "clocks_per_click",
             "notated_32nd_notes_per_beat",
         ]
-        for key in time_signature_keys:
-            self.current_track_meta()[key] = message.get_attr(key)
+        self.set_current_track_meta(time_signature_keys, message)
 
     def set_tempo(self, message):
         """
@@ -200,7 +244,8 @@ class MidiToNotesDataframe:
 
         https://mido.readthedocs.io/en/stable/meta_message_types.html#set-tempo-0x51
         """
-        self.current_track_meta()["tempo"] = message.tempo
+        tempo_keys = ["tempo"]
+        self.set_current_track_meta(tempo_keys, message)
 
     def parse_messages_by_types(self):
         message_types = [
