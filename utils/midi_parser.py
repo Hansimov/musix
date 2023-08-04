@@ -277,13 +277,31 @@ class TrackParser:
         """
         self.set_track_meta([], message)
 
+    def process_note(self, message):
+        note_keys = ["note", "channel", "velocity"]
+        if message.type == "note_on" and message.velocity > 0:
+            note_dict = {}
+            note_dict["start_tick"] = self.ticks
+            for key in note_keys:
+                note_dict[key] = message.__getattribute__(key)
+            self.notes.append(note_dict)
+        elif message.type == "note_off" or message.velocity == 0:
+            note_dict = self.notes[-1]
+            note_dict["play_ticks"] = message.time
+            note_dict["end_tick"] = note_dict["start_tick"] + message.time
+            self.notes[-1] = note_dict
+        else:
+            raise Exception(f"Error when parsing: {message}")
+
+        print(f"  > Note: {self.notes[-1]}")
+
+    def change_control(self, message):
+        pass
+
+    def change_program(self, message):
+        pass
 
     def parse_messages(self):
-        message_types = [
-            "note_on",
-            "control_change",
-            "program_change",
-        ]
         meta_message_types = [
             "time_signature",
             "key_signature",
@@ -291,9 +309,18 @@ class TrackParser:
             "set_tempo",
             "end_of_track",
         ]
+        message_types = [
+            "note_on",
+            "control_change",
+            "program_change",
+        ]
         for message in self.track:
-            if message.type not in message_types:
+            if message.type in meta_message_types + message_types:
+                print(f"{self.ticks}: {message}")
                 self.message_functions[message.type](message)
+                self.ticks += message.time
+            else:
+                raise Exception(f"Unknown message type: {message.type}")
 
     def run(self):
         self.parse_messages()
