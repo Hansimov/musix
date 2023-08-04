@@ -17,8 +17,10 @@ import mido
 
 - MidiFile:
     - type: 1
-        - ticks_per_beat = 480
-        - tracks = [...Messages...]
+    - length: ... (seconds)
+    - ticks_per_beat = 480
+    - tracks = [...Messages...]
+
 - Message:
     - type: (meta) 'time_signature'
         - numerator = 4
@@ -29,6 +31,14 @@ import mido
     - type: (meta) 'key_signature'
         - key = 'B'
         - time = 0
+    - type: (meta) 'set_tempo'
+        - tempo = 419581
+        - time = 1890
+    - type: (meta) 'midi_port'
+        - port = 0
+        - time = 0
+    - type: (meta) 'end_of_track'
+        - time = 1
     - type: 'control_change'
         - channel = 0
         - control = 121
@@ -38,24 +48,16 @@ import mido
         - channel = 0
         - program = 40
         - time = 0
-    - type: (meta) 'midi_port'
-        - port = 0
-        - time = 0
-    - type: (meta) 'set_tempo'
-        - tempo = 419581
-        - time = 1890
     - type: 'note_on'
         - channel = 0
         - note = 83
         - velocity = 85
         - time = 14670
-    - type: (meta) 'end_of_track'
-        - time = 1
-
 
 ## Example console output:
 
 `mido.MidiFile(midi_filepath)`:
+
 MidiFile(type=1, ticks_per_beat=480, tracks=[
   MidiTrack([
     MetaMessage('time_signature', numerator=4, denominator=4, clocks_per_click=24, notated_32nd_notes_per_beat=8, time=0),
@@ -94,21 +96,7 @@ MidiFile(type=1, ticks_per_beat=480, tracks=[
 """
 
 
-""" Tips
-
-## Turn off Notes
-
-In many cases, a note is turned off not by a `note_off` message,
-but by a `note_on` message with `velocity` 0:
-
-```
-    Message('note_on', channel=7, note=90, velocity=92, time=1),
-    Message('note_on', channel=7, note=90, velocity=0, time=479),
-```
- 
-"""
-
-""" Ticks, Beats, Tempo, Quarter-note, and everything about Time
+""" [Ticks, Beats, Tempo, Quarter-note, and everything about Time]
 
 [Definitions]
     - BPM
@@ -139,13 +127,6 @@ but by a `note_on` message with `velocity` 0:
     -> 1 tick = μs_per_beat / ticks_per_beat ≈ 1666.67 μs
 """
 
-""" [Data Structure of Converted Dataframe of Notes]
-columns:
-    note, port, track, channel, instrument, velocity, start_time, end_time, duration, key
-metadata:
-    BPM
-"""
-
 
 """
 * Some utils implementations in mido:
@@ -169,6 +150,14 @@ def bpm2tempo(bpm, denominator=4) -> int:
 
 def tempo2bpm(tempo, denominator=4) -> float:
     return 60 * 1e6 * denominator / (4 * tempo)
+
+
+""" [Data Structure of Converted Dataframe of Notes]
+columns:
+    note, port, track, channel, instrument, velocity, start_time, end_time, duration, key
+metadata:
+    BPM
+"""
 
 
 class Note:
@@ -225,7 +214,7 @@ class MidiParser:
     def tick2second(self, ticks=None):
         if ticks is None:
             ticks = self.ticks
-        return round(tick2second(ticks, self.tempo, self.ticks_per_beat), 2)
+        return round(tick2second(ticks, self.tempo, self.ticks_per_beat), 3)
 
     def set_track_meta(self, keys, message, value_type=int):
         if type(keys) is not list:
@@ -238,15 +227,10 @@ class MidiParser:
 
     def set_time_signature(self, message):
         """
-        MetaMessage('time_signature',
-            numerator=4,
-            denominator=4,
-            clocks_per_click=24,
-            notated_32nd_notes_per_beat=8,
-            time=0,
-        )
+        MetaMessage('time_signature', numerator=4, denominator=4,
+            clocks_per_click=24, notated_32nd_notes_per_beat=8, time=0)
 
-        https://mido.readthedocs.io/en/stable/meta_message_types.html#time-signature-0x58
+        * https://mido.readthedocs.io/en/stable/meta_message_types.html#time-signature-0x58
 
         * MIDI File Format: Time Signature
             * http://midi.teragonaudio.com/tech/midifile/time.htm
@@ -263,49 +247,51 @@ class MidiParser:
 
     def set_key_signature(self, message):
         """
-        MetaMessage('key_signature',
-            key='C',
-            time=0,
-        )
-        https://mido.readthedocs.io/en/stable/meta_message_types.html#key-signature-0x59
+        MetaMessage('key_signature', key='C', time=0)
+
+        * https://mido.readthedocs.io/en/stable/meta_message_types.html#key-signature-0x59
         """
         self.set_track_meta("key", message, value_type=str)
 
     def set_midi_port(self, message):
         """
-        MetaMessage('midi_port',
-            port=0,
-            time=0,
-        )
+        MetaMessage('midi_port', port=0, time=0)
 
-        https://mido.readthedocs.io/en/stable/meta_message_types.html#midi-port-0x21
+        * https://mido.readthedocs.io/en/stable/meta_message_types.html#midi-port-0x21
         """
         self.set_track_meta("port", message)
 
     def set_tempo(self, message):
         """
-        MetaMessage('set_tempo',
-            tempo=500000,
-            time=0,
-        )
+        MetaMessage('set_tempo', tempo=500000, time=0)
 
-        tempo: μs per beat, default value is: 500000
+        tempo: μs per beat, default is `500000`
 
-        https://mido.readthedocs.io/en/stable/meta_message_types.html#set-tempo-0x51
+        * https://mido.readthedocs.io/en/stable/meta_message_types.html#set-tempo-0x51
         """
         self.set_track_meta("tempo", message)
         self.bpm = tempo2bpm(self.tempo, self.denominator)
 
     def set_end_of_track(self, message):
         """
-        MetaMessage('end_of_track',
-            time=1
-        )
-        https://mido.readthedocs.io/en/stable/meta_message_types.html#end-of-track-0x2f
+        MetaMessage('end_of_track', time=1)
+
+        * https://mido.readthedocs.io/en/stable/meta_message_types.html#end-of-track-0x2f
         """
         self.set_track_meta([], message)
 
     def process_note(self, message):
+        """
+        In many cases, a note is turned off not by a `note_off` message,
+        but by a `note_on` message whose `velocity` is `0`:
+
+        Example:
+
+        ```py
+        Message('note_on', channel=7, note=90, velocity=92, time=1),
+        Message('note_on', channel=7, note=90, velocity=0, time=479),
+        ```
+        """
         note_keys = ["note", "channel", "velocity"]
         if message.type == "note_on" and message.velocity > 0:
             note_dict = {}
@@ -315,6 +301,7 @@ class MidiParser:
                 note_dict[key] = getattr(message, key)
             self.notes.append(note_dict)
         elif message.type == "note_off" or message.velocity == 0:
+
             note_dict = self.notes[-1]
             note_dict["play_ticks"] = message.time
             note_dict["play_seconds"] = self.tick2second(message.time)
@@ -337,7 +324,7 @@ class MidiParser:
             print(f"{self.ticks}: {message}")
         else:
             seconds = self.tick2second()
-            print(f"{seconds}: {message}")
+            print(f"{seconds:.2f}: {message}")
 
         if message.type in self.meta_message_type_funcs.keys():
             self.meta_message_type_funcs[message.type](message)
