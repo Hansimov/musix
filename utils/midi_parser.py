@@ -222,6 +222,11 @@ class MidiParser:
             "end_of_track": self.set_end_of_track,
         }
 
+    def tick2second(self, ticks=None):
+        if ticks is None:
+            ticks = self.ticks
+        return round(tick2second(ticks, self.tempo, self.ticks_per_beat), 2)
+
     def set_track_meta(self, keys, message, value_type=int):
         if type(keys) is not list:
             keys = [keys]
@@ -289,10 +294,7 @@ class MidiParser:
         https://mido.readthedocs.io/en/stable/meta_message_types.html#set-tempo-0x51
         """
         self.set_track_meta("tempo", message)
-        self.bpm = tempo2bpm(
-            self.tempo,
-            denominator=self.denominator,
-        )
+        self.bpm = tempo2bpm(self.tempo, self.denominator)
 
     def set_end_of_track(self, message):
         """
@@ -308,13 +310,16 @@ class MidiParser:
         if message.type == "note_on" and message.velocity > 0:
             note_dict = {}
             note_dict["start_tick"] = self.ticks
+            note_dict["start_second"] = self.tick2second()
             for key in note_keys:
                 note_dict[key] = getattr(message, key)
             self.notes.append(note_dict)
         elif message.type == "note_off" or message.velocity == 0:
             note_dict = self.notes[-1]
             note_dict["play_ticks"] = message.time
+            note_dict["play_seconds"] = self.tick2second(message.time)
             note_dict["end_tick"] = note_dict["start_tick"] + message.time
+            note_dict["end_second"] = self.tick2second(note_dict["end_tick"])
             self.notes[-1] = note_dict
             print(f"  > Note: {self.notes[-1]}")
         else:
@@ -327,18 +332,17 @@ class MidiParser:
         pass
 
     def parse_message(self, message):
+        self.ticks += message.time
         if not hasattr(self, "tempo"):
             print(f"{self.ticks}: {message}")
         else:
-            seconds = round(tick2second(self.ticks, self.tempo, self.ticks_per_beat), 1)
+            seconds = self.tick2second()
             print(f"{seconds}: {message}")
 
         if message.type in self.meta_message_type_funcs.keys():
             self.meta_message_type_funcs[message.type](message)
-            self.ticks += message.time
         elif message.type in self.message_type_funcs.keys():
             self.message_type_funcs[message.type](message)
-            self.ticks += message.time
         else:
             raise Exception(f"Unknown message type: {message.type}")
 
