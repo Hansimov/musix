@@ -169,26 +169,31 @@ class MidiToNotesDataframe:
     def __init__(self, midi_filepath):
         self.midi_filepath = midi_filepath
         self.mf = mido.MidiFile(self.midi_filepath)
-        self.tempo = 500000
-        self.map_func_by_message_types()
-        self.init_track_meta()
+        self.tracks = []
 
-    def init_track_meta(self):
-        self.track_meta = []
-        self.current_track_idx = 0
-        self.track_meta.append({})
+    def parse_tracks(self):
+        for track in self.mf.tracks:
+            track_parser = TrackParser(track)
+            track_parser.run()
+
+    def run(self):
+        self.parse_tracks()
+
+
+class TrackParser:
+    def __init__(self, track):
+        self.track = track
+        self.track_meta = {}
+        self.map_func_by_message_types()
 
     def map_func_by_message_types(self):
         self.message_functions = {
             "set_tempo": self.set_tempo,
         }
 
-    def current_track_meta(self):
-        return self.track_meta[self.current_track_idx]
-
-    def set_current_track_meta(self, keys, message):
-        for key in key:
-            self.current_track_meta()[key] = message.get_attr(key)
+    def set_track_meta(self, keys, message):
+        for key in keys:
+            self.track_meta[key] = message.get_attr(key)
 
     def set_key_signature(self, message):
         """
@@ -199,7 +204,7 @@ class MidiToNotesDataframe:
         https://mido.readthedocs.io/en/stable/meta_message_types.html#key-signature-0x59
         """
         key_signature_keys = ["key"]
-        self.set_current_track_meta(key_signature_keys, message)
+        self.set_track_meta(key_signature_keys, message)
 
     def set_midi_port(self, message):
         """
@@ -211,7 +216,7 @@ class MidiToNotesDataframe:
         https://mido.readthedocs.io/en/stable/meta_message_types.html#midi-port-0x21
         """
         midi_port_keys = ["port"]
-        self.set_current_track_meta(midi_port_keys, message)
+        self.set_track_meta(midi_port_keys, message)
 
     def set_time_signature(self, message):
         """
@@ -231,7 +236,7 @@ class MidiToNotesDataframe:
             "clocks_per_click",
             "notated_32nd_notes_per_beat",
         ]
-        self.set_current_track_meta(time_signature_keys, message)
+        self.set_track_meta(time_signature_keys, message)
 
     def set_tempo(self, message):
         """
@@ -245,9 +250,9 @@ class MidiToNotesDataframe:
         https://mido.readthedocs.io/en/stable/meta_message_types.html#set-tempo-0x51
         """
         tempo_keys = ["tempo"]
-        self.set_current_track_meta(tempo_keys, message)
+        self.set_track_meta(tempo_keys, message)
 
-    def parse_messages_by_types(self):
+    def parse_messages(self):
         message_types = [
             "note_on",
             "control_change",
@@ -260,12 +265,9 @@ class MidiToNotesDataframe:
             "set_tempo",
             "end_of_track",
         ]
-        for track in self.mf.tracks:
-            for message in track:
-                if message.type not in message_types:
-                    print(message)
+        for message in self.track:
+            if message.type not in message_types:
+                print(message)
 
     def run(self):
-        # mf = self.mf
-        # print(mf)
-        self.parse_messages_by_types()
+        self.parse_messages()
