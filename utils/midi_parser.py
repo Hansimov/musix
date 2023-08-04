@@ -189,73 +189,47 @@ class Note:
         ]
 
 
-class MidiToNotesDataframe:
+class MidiParser:
     def __init__(self, midi_filepath):
-        self.midi_filepath = midi_filepath
-        self.mf = mido.MidiFile(self.midi_filepath)
+        self.mf = mido.MidiFile(midi_filepath)
+        self.ticks = 0
         self.tracks = []
+        self.notes = []
+
+        self.map_message_functions_by_types()
 
     def set_header_attrs(self):
         """
         * Standard MIDI Files — Mido 1.3.0 documentation
             * https://mido.readthedocs.io/en/stable/files/midi.html#meta-messages
         """
-        mf_attrs = [
-            "filename",
-            "type",
-            "length",
-            "ticks_per_beat",
-        ]
-        print(dir(self.mf))
+        mf_attrs = ["filename", "type", "length", "ticks_per_beat"]
         for attr in mf_attrs:
-            print(f"{attr}: {getattr(self.mf, attr)}")
             setattr(self, attr, getattr(self.mf, attr))
 
-    def parse_tracks(self):
-        for track in self.mf.tracks:
-            track_parser = TrackParser(
-                track,
-                ticks_per_beat=self.ticks_per_beat,
-            )
-            track_parser.run()
-
-    def run(self):
-        self.set_header_attrs()
-        # self.parse_tracks()
-
-
-class TrackParser:
-    def __init__(self, track, ticks_per_beat):
-        self.ticks = 0
-        self.ticks_per_beat = ticks_per_beat
-        self.track = track
-        self.track_meta = {}
-        self.map_message_functions_by_types()
-        self.notes = []
-
     def map_message_functions_by_types(self):
-        self.message_functions = {
-            # Meta-Message types
-            "time_signature": self.set_time_signature,
-            "key_signature": self.set_key_signature,
-            "midi_port": self.set_midi_port,
-            "set_tempo": self.set_tempo,
-            "end_of_track": self.set_end_of_track,
-            # Message types
+        self.message_type_funcs = {
             "note_on": self.process_note,
             "note_off": self.process_note,
             "control_change": self.change_control,
             "program_change": self.change_program,
         }
+        self.meta_message_type_funcs = {
+            "time_signature": self.set_time_signature,
+            "key_signature": self.set_key_signature,
+            "midi_port": self.set_midi_port,
+            "set_tempo": self.set_tempo,
+            "end_of_track": self.set_end_of_track,
+        }
 
     def set_track_meta(self, keys, message, value_type=int):
-        if type(keys) == str:
+        if type(keys) is not list:
             keys = [keys]
 
         for key in keys:
-            val = message.__getattribute__(key)
-            val = value_type(val)
-            self.track_meta[key] = val
+            val = value_type(getattr(message, key))
+            setattr(self, key, val)
+            print(val, end=" ")
 
     def set_time_signature(self, message):
         """
@@ -315,9 +289,9 @@ class TrackParser:
         https://mido.readthedocs.io/en/stable/meta_message_types.html#set-tempo-0x51
         """
         self.set_track_meta("tempo", message)
-        self.track_meta["bpm"] = tempo2bpm(
-            self.track_meta["tempo"],
-            denominator=self.track_meta["denominator"],
+        self.bpm = tempo2bpm(
+            self.tempo,
+            denominator=self.denominator,
         )
 
     def set_end_of_track(self, message):
@@ -335,7 +309,7 @@ class TrackParser:
             note_dict = {}
             note_dict["start_tick"] = self.ticks
             for key in note_keys:
-                note_dict[key] = message.__getattribute__(key)
+                note_dict[key] = getattr(message, key)
             self.notes.append(note_dict)
         elif message.type == "note_off" or message.velocity == 0:
             note_dict = self.notes[-1]
@@ -352,31 +326,31 @@ class TrackParser:
     def change_program(self, message):
         pass
 
-    def parse_messages(self):
-        meta_message_types = [
-            "time_signature",
-            "key_signature",
-            "midi_port",
-            "set_tempo",
-            "end_of_track",
-        ]
-        message_types = [
-            "note_on",
-            "control_change",
-            "program_change",
-        ]
-        for message in self.track:
-            if message.type in meta_message_types:
-                print(f"{self.ticks}: {message}")
-                self.message_functions[message.type](message)
-                self.ticks += message.time
-            elif message.type in message_types:
-                # print(f"{self.ticks}: {message}")
-                # self.message_functions[message.type](message)
-                self.ticks += message.time
-                continue
-            else:
-                raise Exception(f"Unknown message type: {message.type}")
+    def parse_message(self, message):
+        if not hasattr(self, "tempo"):
+            print(f"{self.ticks}: {message}")
+        else:
+            seconds = round(tick2second(self.ticks, self.tempo, self.ticks_per_beat), 1)
+            print(f"{seconds}: {message}")
+
+        if message.type in self.meta_message_type_funcs.keys():
+            self.meta_message_type_funcs[message.type](message)
+            self.ticks += message.time
+        elif message.type in self.message_type_funcs.keys():
+            self.message_type_funcs[message.type](message)
+            self.ticks += message.time
+        else:
+            raise Exception(f"Unknown message type: {message.type}")
+
+    def parse_track(self, track):
+        for message in track:
+            self.parse_message(message)
+
+    def parse_tracks(self):
+        for track in self.mf.tracks:
+            self.ticks = 0
+            self.parse_track(track)
 
     def run(self):
-        self.parse_messages()
+        self.set_header_attrs()
+        self.parse_tracks()
