@@ -1,6 +1,4 @@
 # from manim import MovingCameraScene
-import mido
-import librosa
 import pandas as pd
 
 from collections import Counter

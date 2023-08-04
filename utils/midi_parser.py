@@ -147,8 +147,28 @@ metadata:
 """
 
 
-def tick2second(tick, tempo, ticks_per_beat):
-    return tick * tempo / ticks_per_beat / 1e6
+"""
+* Some utils implementations in mido:
+    * https://github.com/mido/mido/blob/main/mido/midifiles/units.py
+* MIDI File Format: Tempo and Timebase
+    * http://midi.teragonaudio.com/tech/midifile/ppqn.htm
+"""
+
+
+def tick2second(tick, tempo, ticks_per_beat) -> float:
+    return tick * tempo * 1e-6 / ticks_per_beat
+
+
+def second2tick(second, tempo, ticks_per_beat) -> int:
+    return int(second * ticks_per_beat * 1e6 / tempo)
+
+
+def bpm2tempo(bpm, denominator=4) -> int:
+    return int(60 * 1e6 * denominator / (4 * bpm))
+
+
+def tempo2bpm(tempo, denominator=4) -> float:
+    return 60 * 1e6 * denominator / (4 * tempo)
 
 
 class Note:
@@ -175,18 +195,39 @@ class MidiToNotesDataframe:
         self.mf = mido.MidiFile(self.midi_filepath)
         self.tracks = []
 
+    def set_header_attrs(self):
+        """
+        * Standard MIDI Files — Mido 1.3.0 documentation
+            * https://mido.readthedocs.io/en/stable/files/midi.html#meta-messages
+        """
+        mf_attrs = [
+            "filename",
+            "type",
+            "length",
+            "ticks_per_beat",
+        ]
+        print(dir(self.mf))
+        for attr in mf_attrs:
+            print(f"{attr}: {getattr(self.mf, attr)}")
+            setattr(self, attr, getattr(self.mf, attr))
+
     def parse_tracks(self):
         for track in self.mf.tracks:
-            track_parser = TrackParser(track)
+            track_parser = TrackParser(
+                track,
+                ticks_per_beat=self.ticks_per_beat,
+            )
             track_parser.run()
 
     def run(self):
-        self.parse_tracks()
+        self.set_header_attrs()
+        # self.parse_tracks()
 
 
 class TrackParser:
-    def __init__(self, track):
+    def __init__(self, track, ticks_per_beat):
         self.ticks = 0
+        self.ticks_per_beat = ticks_per_beat
         self.track = track
         self.track_meta = {}
         self.map_message_functions_by_types()
@@ -207,12 +248,14 @@ class TrackParser:
             "program_change": self.change_program,
         }
 
-    def set_track_meta(self, keys, message):
+    def set_track_meta(self, keys, message, value_type=int):
         if type(keys) == str:
             keys = [keys]
 
         for key in keys:
-            self.track_meta[key] = message.__getattribute__(key)
+            val = message.__getattribute__(key)
+            val = value_type(val)
+            self.track_meta[key] = val
 
     def set_time_signature(self, message):
         """
@@ -225,6 +268,11 @@ class TrackParser:
         )
 
         https://mido.readthedocs.io/en/stable/meta_message_types.html#time-signature-0x58
+
+        * MIDI File Format: Time Signature
+            * http://midi.teragonaudio.com/tech/midifile/time.htm
+        * What is notated_32nd_notes_per_beat
+            * https://www.midi.org/forum/5045-what-is-notated_32nd_notes_per_beat
         """
         time_signature_keys = [
             "numerator",
@@ -242,7 +290,7 @@ class TrackParser:
         )
         https://mido.readthedocs.io/en/stable/meta_message_types.html#key-signature-0x59
         """
-        self.set_track_meta("key", message)
+        self.set_track_meta("key", message, value_type=str)
 
     def set_midi_port(self, message):
         """
@@ -267,6 +315,10 @@ class TrackParser:
         https://mido.readthedocs.io/en/stable/meta_message_types.html#set-tempo-0x51
         """
         self.set_track_meta("tempo", message)
+        self.track_meta["bpm"] = tempo2bpm(
+            self.track_meta["tempo"],
+            denominator=self.track_meta["denominator"],
+        )
 
     def set_end_of_track(self, message):
         """
@@ -290,10 +342,9 @@ class TrackParser:
             note_dict["play_ticks"] = message.time
             note_dict["end_tick"] = note_dict["start_tick"] + message.time
             self.notes[-1] = note_dict
+            print(f"  > Note: {self.notes[-1]}")
         else:
             raise Exception(f"Error when parsing: {message}")
-
-        print(f"  > Note: {self.notes[-1]}")
 
     def change_control(self, message):
         pass
@@ -315,10 +366,15 @@ class TrackParser:
             "program_change",
         ]
         for message in self.track:
-            if message.type in meta_message_types + message_types:
+            if message.type in meta_message_types:
                 print(f"{self.ticks}: {message}")
                 self.message_functions[message.type](message)
                 self.ticks += message.time
+            elif message.type in message_types:
+                # print(f"{self.ticks}: {message}")
+                # self.message_functions[message.type](message)
+                self.ticks += message.time
+                continue
             else:
                 raise Exception(f"Unknown message type: {message.type}")
 
