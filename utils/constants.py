@@ -1,49 +1,44 @@
-import os
-import sys
+""" [Docs of File Formats]
 
+* Standard MIDI file format, updated
+  * http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
 
-def color_print(s, level="info"):
-    msg_level_D = {
-        "shell": "1;34;40",
-        "success": "1;32;40",
-        "info": "1;36;40",
-        "warn": "1;35;40",
-        "error": "1;31;40",
-    }
-    cb = "\x1b[{}m"
-    ce = "\x1b[0m"
+* MIDI文件格式解析 | 码农家园
+  * https://www.codenong.com/js59d74800b43b/
 
-    # cb = cb.format('1;33;40')
-    cb = cb.format(msg_level_D[level])
-    print(f"{cb}{s}{ce}")
+* 读书笔记——MIDI文件结构简介 - 哔哩哔哩
+  * https://www.bilibili.com/read/cv1753143/
 
+* MIDI文件格式分析──理论篇 - Midifan：我们关注电脑音乐
+  * https://m.midifan.com/article_body.php?id=901
 
-def disp_dict(data):
-    max_len = len(max(data, key=len))
-    for k, v in data.items():
-        color_print(f"{k:{max_len+1}}: {v}", level="info")
+* Note names, MIDI numbers and frequencies
+  * https://newt.phys.unsw.edu.au/jw/notes.html
 
+* Frequency and Pitch of Sound: From Physclips
+  * https://www.animations.physics.unsw.edu.au/jw/frequency-pitch-sound.htm
 
-# Standard MIDI file format, updated
-#   http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
+# =================================================== #
 
-# MIDI文件格式解析 | 码农家园
-#   https://www.codenong.com/js59d74800b43b/
+* Standard MIDI file format, updated
+  * http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
 
-# 读书笔记——MIDI文件结构简介 - 哔哩哔哩
-#   https://www.bilibili.com/read/cv1753143/
+* General MIDI Percussion and Sounds
+  * https://jazz-soft.net/demo/GeneralMidi.html
+  * https://jazz-soft.net/demo/GeneralMidiPerc.html
 
-# MIDI文件格式分析──理论篇 - Midifan：我们关注电脑音乐
-#   https://m.midifan.com/article_body.php?id=901
+* General MIDI numbers
+  * https://pjb.com.au/muscript/gm.html
 
-# Note names, MIDI numbers and frequencies
-#   https://newt.phys.unsw.edu.au/jw/notes.html
+* GM 1 Sound Set
+  * https://www.midi.org/specifications-old/item/gm-level-1-sound-set
 
-# Frequency and Pitch of Sound: From Physclips
-#   https://www.animations.physics.unsw.edu.au/jw/frequency-pitch-sound.htm
+* Music Representation Labs
+  * http://www.ccarh.org/courses/253/handout/gminstruments/
 
+"""
 
-# Table of MIDI Note Numbers
+""" [Table of MIDI Note Numbers]
 # ---|-------------------------------------------------
 # Oct|                  Note Numbers
 # ---|-------------------------------------------------
@@ -62,31 +57,14 @@ def disp_dict(data):
 #  9 | 120 121 122 123 124 125 126 127
 # ---|-------------------------------------------------
 
-# Middle C = C4 (60, 0x3c)
-# C4 is 40th key on 88-key piano keyboards
-# 88-key range: A0-C8 | 21-108 | 0x15-0x80
+Middle C = C4 (60, 0x3c)
+C4 is 40th key on 88-key piano keyboards
+88-key range: A0-C8 | 21-108 | 0x15-0x80
 
 """
-# =================================================== #
-"""
 
-# Standard MIDI file format, updated
-#   http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
 
-# General MIDI Percussion and Sounds
-#   https://jazz-soft.net/demo/GeneralMidi.html
-#   https://jazz-soft.net/demo/GeneralMidiPerc.html
-
-# General MIDI numbers
-#   https://pjb.com.au/muscript/gm.html
-
-# GM 1 Sound Set
-#   https://www.midi.org/specifications-old/item/gm-level-1-sound-set
-
-# Music Representation Labs
-#   http://www.ccarh.org/courses/253/handout/gminstruments/
-
-patch_num_table = {
+PATCH_TABLE = {
     # Piano
     0: "Acoustic Grand Piano",
     1: "Bright Acoustic Piano",
@@ -233,7 +211,8 @@ patch_num_table = {
     127: "Gun Shot",
 }
 
-percussion_num_table = {  # on channel 9 (start from 0)
+# On channel 9 (start from 0)
+PERCUSSION_TABLE = {
     0: "-",
     16: "-",
     27: "High-Q",
@@ -299,4 +278,4 @@ percussion_num_table = {  # on channel 9 (start from 0)
     87: "Open Surdo",
 }
 
-control_num_table = {}
+CONTROLLER_TABLE = {}
