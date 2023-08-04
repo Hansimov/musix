@@ -41,7 +41,7 @@ import mido
     - type: (meta) 'midi_port'
         - port = 0
         - time = 0
-    - type: 'set_tempo'
+    - type: (meta) 'set_tempo'
         - tempo = 419581
         - time = 1890
     - type: 'note_on'
@@ -113,10 +113,11 @@ but by a `note_on` message with `velocity` 0:
 [Definitions]
     - BPM
         - beats per minute
-    - TPB
-        - ticks per beat
     - tempo
         - μs per beat
+        - use `bpm2tempo()` and `tempo2bpm()` in `mido` to convert between BPM and tempo
+    - TPB
+        - ticks per beat
     - `time` of Message in mido
         - Delta time in ticks. Must be an integer.
         - See more:
@@ -140,7 +141,7 @@ but by a `note_on` message with `velocity` 0:
 
 """ [Data Structure of Converted Dataframe of Notes]
 columns:
-    note, channel, instrument, velocity, start_time, end_time, duration, key
+    note, track, channel, instrument, velocity, start_time, end_time, duration, key
 metadata:
     BPM
 """
@@ -151,6 +152,25 @@ class MidiToNotesDataframe:
         self.midi_filepath = midi_filepath
         self.mf = mido.MidiFile(self.midi_filepath)
 
+    def parse_messages_by_types(self):
+        message_types = [
+            "note_on",
+            "control_change",
+            "program_change",
+        ]
+        meta_message_types = [
+            "time_signature",
+            "key_signature",
+            "midi_port",
+            "set_tempo",
+            "end_of_track",
+        ]
+        for track in self.mf.tracks:
+            for message in track:
+                if message.type not in message_types + meta_message_types:
+                    print(message)
+
     def run(self):
-        mf = self.mf
-        print(mf)
+        # mf = self.mf
+        # print(mf)
+        self.parse_messages_by_types()

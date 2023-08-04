@@ -1,9 +1,11 @@
 # from manim import MovingCameraScene
-from collections import Counter
-from pathlib import Path
 import mido
 import librosa
 import pandas as pd
+
+from collections import Counter
+from pathlib import Path
+from utils.midi_parser import MidiToNotesDataframe
 
 
 class OnlyMyRailGun:
@@ -13,19 +15,8 @@ class OnlyMyRailGun:
     )
 
     def run(self):
-        mf = mido.MidiFile(self.midi_filepath)
-        notes = []
-        for msg in mf:
-            if msg.type == "note_on" or msg.type == "note_off":
-                note = msg.note
-                velocity = msg.velocity
-                time = msg.time
-                type = msg.type
-                notes.append([note, velocity, time, type])
-
-        df = pd.DataFrame(notes, columns=["note", "velocity", "time", "type"])
-        df = df.sort_values(by="time")
-        print(df)
+        mp = MidiToNotesDataframe(self.midi_filepath)
+        mp.run()
 
 
 if __name__ == "__main__":
