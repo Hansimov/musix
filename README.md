@@ -3,6 +3,7 @@ Music visualization and animation
 
 ## References
 
+### Manim
 * Reference Manual - Manim Community v0.17.3
   * https://docs.manim.community/en/stable/reference.html
 
@@ -14,3 +15,7 @@ Music visualization and animation
 
 * slama.dev – Manim – Groups, Transforms, Updaters
   * https://slama.dev/manim/groups-transformations-updaters/
+
+### Mido
+* Standard MIDI Files — Mido 1.3.0 documentation
+  * https://mido.readthedocs.io/en/stable/files/midi.html
