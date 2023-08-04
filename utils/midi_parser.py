@@ -31,29 +31,49 @@ import mido
 
 MidiFile > MidiTracks > Messages
 
-MidiFile: [type, ticks_per_beat, tracks]
+## Example args with values:
+
+MidiFile:
+  - type: 1
+    - ticks_per_beat = 480
+    - tracks = [...Messages...]
 Message:
   - type: (meta) 'time_signature'
-    - numerator=4, denominator=4, clocks_per_click=24, notated_32nd_notes_per_beat=8, time=0
+    - numerator = 4
+    - denominator = 4
+    - clocks_per_click = 24
+    - notated_32nd_notes_per_beat = 8
+    - time = 0
   - type: (meta) 'key_signature'
-    - key='B', time=0
+    - key = 'B'
+    - time = 0
   - type: 'control_change'
-    - channel=0, control=121, value=0, time=0
+    - channel = 0
+    - control = 121
+    - value = 0
+    - time = 0
   - type: 'program_change'
-    - channel=0, program=40, time=0
+    - channel = 0
+    - program = 40
+    - time = 0
   - type: (meta) 'midi_port'
-    - port=0, time=0
+    - port = 0
+    - time = 0
   - type: 'set_tempo'
-    - tempo=419581, time=1890
+    - tempo = 419581
+    - time = 1890
   - type: 'note_on'
-    - channel=0, note=83, velocity=85, time=14670
+    - channel = 0
+    - note = 83
+    - velocity = 85
+    - time = 14670
   - type: (meta) 'end_of_track'
-    - time=1
+    - time = 1
 
 
-## Example:
+## Example console output:
 
-`mido.MidiFile(midi_filepath)`
+`mido.MidiFile(midi_filepath)`:
 
 MidiFile(type=1, ticks_per_beat=480, tracks=[
   MidiTrack([
@@ -89,11 +109,25 @@ MidiFile(type=1, ticks_per_beat=480, tracks=[
     MetaMessage('end_of_track', time=1)
   ])
 ])
-    
+
+
+## Units and terms
+
+- time
+  - Delta time in ticks. Must be an integer.
+  - See more:
+    - https://mido.readthedocs.io/en/stable/files/midi.html#about-the-time-attribute
+
+"""
+
+""" [Structure of Converted Dataframe of Notes]
+columns:
+    note, channel, velocity, time_in_seconds, instrument
+
 """
 
 
-class MidiParser:
+class MidiToNotesDataframe:
     def __init__(self, midi_filepath):
         self.midi_filepath = midi_filepath
         self.mf = mido.MidiFile(self.midi_filepath)
