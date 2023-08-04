@@ -126,7 +126,7 @@ but by a `note_on` message with `velocity` 0:
 [Default values]
     1 beat = 1 quarter-note = 6 MIDI clocks
 
-    tempo = 500000 
+    tempo = 500000  (by default)
     -> 500000 μs (0.5s) per beat
     -> 1 minute per 120 beats
     -> BPM = 120
@@ -141,7 +141,7 @@ but by a `note_on` message with `velocity` 0:
 
 """ [Data Structure of Converted Dataframe of Notes]
 columns:
-    note, track, channel, instrument, velocity, start_time, end_time, duration, key
+    note, port, track, channel, instrument, velocity, start_time, end_time, duration, key
 metadata:
     BPM
 """
@@ -151,6 +151,56 @@ class MidiToNotesDataframe:
     def __init__(self, midi_filepath):
         self.midi_filepath = midi_filepath
         self.mf = mido.MidiFile(self.midi_filepath)
+        self.tempo = 500000
+        self.map_func_by_message_types()
+        self.init_track_meta()
+
+    def init_track_meta(self):
+        self.track_meta = []
+        self.current_track_idx = 0
+        self.track_meta.append({})
+
+    def map_func_by_message_types(self):
+        self.message_functions = {
+            "set_tempo": self.set_tempo,
+        }
+
+    def current_track_meta(self):
+        return self.track_meta[self.current_track_idx]
+
+    def set_time_signature(self, message):
+        """
+        MetaMessage('time_signature',
+            numerator=4,
+            denominator=4,
+            clocks_per_click=24,
+            notated_32nd_notes_per_beat=8,
+            time=0,
+        )
+
+        https://mido.readthedocs.io/en/stable/meta_message_types.html#time-signature-0x58
+        """
+        time_signature_keys = [
+            "numerator",
+            "denominator",
+            "clocks_per_click",
+            "notated_32nd_notes_per_beat",
+        ]
+        for key in time_signature_keys:
+            self.current_track_meta()[key] = message.get_attr(key)
+
+    def set_tempo(self, message):
+        """
+        MetaMessage('set_tempo',
+            tempo=500000,
+            time=0,
+        )
+
+        tempo: μs per beat, default value is: 500000
+
+        https://mido.readthedocs.io/en/stable/meta_message_types.html#set-tempo-0x51
+        """
+        self.current_track_meta()["tempo"] = message.tempo
 
     def parse_messages_by_types(self):
         message_types = [
@@ -167,7 +217,7 @@ class MidiToNotesDataframe:
         ]
         for track in self.mf.tracks:
             for message in track:
-                if message.type not in message_types + meta_message_types:
+                if message.type not in message_types:
                     print(message)
 
     def run(self):
