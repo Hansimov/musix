@@ -147,7 +147,11 @@ metadata:
 """
 
 
-class NoteRow:
+def tick2second(tick, tempo, ticks_per_beat):
+    return tick * tempo / ticks_per_beat / 1e6
+
+
+class Note:
     def __init__(self):
         pass
 
@@ -186,26 +190,29 @@ class TrackParser:
         self.track = track
         self.track_meta = {}
         self.map_message_functions_by_types()
+        self.notes = []
 
     def map_message_functions_by_types(self):
         self.message_functions = {
+            # Meta-Message types
             "time_signature": self.set_time_signature,
             "key_signature": self.set_key_signature,
             "midi_port": self.set_midi_port,
             "set_tempo": self.set_tempo,
             "end_of_track": self.set_end_of_track,
+            # Message types
+            "note_on": self.process_note,
+            "note_off": self.process_note,
+            "control_change": self.change_control,
+            "program_change": self.change_program,
         }
 
     def set_track_meta(self, keys, message):
-        print(
-            f"{message}\n",
-            f"  > Set: {keys}",
-            sep="",
-        )
+        if type(keys) == str:
+            keys = [keys]
+
         for key in keys:
             self.track_meta[key] = message.__getattribute__(key)
-        self.ticks += message.__getattribute__("time")
-        print(f"  > Ticks: {self.ticks}")
 
     def set_time_signature(self, message):
         """
@@ -235,8 +242,7 @@ class TrackParser:
         )
         https://mido.readthedocs.io/en/stable/meta_message_types.html#key-signature-0x59
         """
-        key_signature_keys = ["key"]
-        self.set_track_meta(key_signature_keys, message)
+        self.set_track_meta("key", message)
 
     def set_midi_port(self, message):
         """
@@ -247,8 +253,7 @@ class TrackParser:
 
         https://mido.readthedocs.io/en/stable/meta_message_types.html#midi-port-0x21
         """
-        midi_port_keys = ["port"]
-        self.set_track_meta(midi_port_keys, message)
+        self.set_track_meta("port", message)
 
     def set_tempo(self, message):
         """
@@ -261,8 +266,7 @@ class TrackParser:
 
         https://mido.readthedocs.io/en/stable/meta_message_types.html#set-tempo-0x51
         """
-        tempo_keys = ["tempo"]
-        self.set_track_meta(tempo_keys, message)
+        self.set_track_meta("tempo", message)
 
     def set_end_of_track(self, message):
         """
@@ -271,8 +275,8 @@ class TrackParser:
         )
         https://mido.readthedocs.io/en/stable/meta_message_types.html#end-of-track-0x2f
         """
-        end_of_track_keys = []
-        self.set_track_meta(end_of_track_keys, message)
+        self.set_track_meta([], message)
+
 
     def parse_messages(self):
         message_types = [
