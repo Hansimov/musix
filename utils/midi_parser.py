@@ -182,18 +182,50 @@ class MidiToNotesDataframe:
 
 class TrackParser:
     def __init__(self, track):
+        self.ticks = 0
         self.track = track
         self.track_meta = {}
-        self.map_func_by_message_types()
+        self.map_message_functions_by_types()
 
-    def map_func_by_message_types(self):
+    def map_message_functions_by_types(self):
         self.message_functions = {
+            "time_signature": self.set_time_signature,
+            "key_signature": self.set_key_signature,
+            "midi_port": self.set_midi_port,
             "set_tempo": self.set_tempo,
+            "end_of_track": self.set_end_of_track,
         }
 
     def set_track_meta(self, keys, message):
+        print(
+            f"{message}\n",
+            f"  > Set: {keys}",
+            sep="",
+        )
         for key in keys:
-            self.track_meta[key] = message.get_attr(key)
+            self.track_meta[key] = message.__getattribute__(key)
+        self.ticks += message.__getattribute__("time")
+        print(f"  > Ticks: {self.ticks}")
+
+    def set_time_signature(self, message):
+        """
+        MetaMessage('time_signature',
+            numerator=4,
+            denominator=4,
+            clocks_per_click=24,
+            notated_32nd_notes_per_beat=8,
+            time=0,
+        )
+
+        https://mido.readthedocs.io/en/stable/meta_message_types.html#time-signature-0x58
+        """
+        time_signature_keys = [
+            "numerator",
+            "denominator",
+            "clocks_per_click",
+            "notated_32nd_notes_per_beat",
+        ]
+        self.set_track_meta(time_signature_keys, message)
 
     def set_key_signature(self, message):
         """
@@ -218,26 +250,6 @@ class TrackParser:
         midi_port_keys = ["port"]
         self.set_track_meta(midi_port_keys, message)
 
-    def set_time_signature(self, message):
-        """
-        MetaMessage('time_signature',
-            numerator=4,
-            denominator=4,
-            clocks_per_click=24,
-            notated_32nd_notes_per_beat=8,
-            time=0,
-        )
-
-        https://mido.readthedocs.io/en/stable/meta_message_types.html#time-signature-0x58
-        """
-        time_signature_keys = [
-            "numerator",
-            "denominator",
-            "clocks_per_click",
-            "notated_32nd_notes_per_beat",
-        ]
-        self.set_track_meta(time_signature_keys, message)
-
     def set_tempo(self, message):
         """
         MetaMessage('set_tempo',
@@ -251,6 +263,16 @@ class TrackParser:
         """
         tempo_keys = ["tempo"]
         self.set_track_meta(tempo_keys, message)
+
+    def set_end_of_track(self, message):
+        """
+        MetaMessage('end_of_track',
+            time=1
+        )
+        https://mido.readthedocs.io/en/stable/meta_message_types.html#end-of-track-0x2f
+        """
+        end_of_track_keys = []
+        self.set_track_meta(end_of_track_keys, message)
 
     def parse_messages(self):
         message_types = [
@@ -267,7 +289,7 @@ class TrackParser:
         ]
         for message in self.track:
             if message.type not in message_types:
-                print(message)
+                self.message_functions[message.type](message)
 
     def run(self):
         self.parse_messages()
